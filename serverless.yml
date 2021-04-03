@@ -1,0 +1,76 @@
+service: filejob
+frameworkVersion: '2'
+
+plugins:
+  - serverless-step-functions
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+
+  stage: dev
+  region: us-east-1
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+        - s3:CopyObject
+        - s3:DeleteObject
+      Resource: "*"
+
+  # environment:
+  #   variable1: value1
+
+functions:
+  StartJob:
+    handler: src/lambdas/StartJob.handler
+  RunJobSteps:
+    handler: src/lambdas/RunJobSteps.handler
+  StopJob:
+    handler: src/lambdas/StopJob.handler
+  CatchError:
+    handler: src/lambdas/CatchError.handler
+
+stepFunctions:
+  stateMachines:
+    jobRunnerStateMachine:
+      id: JobRunnerStateMachine
+      name: ${self:service}-${self:provider.stage}-jobrunner
+      definition:
+        StartAt: startJob
+        States:
+          startJob:
+            Type: Task
+            Resource: !GetAtt StartJob.Arn
+            ResultPath: $.job
+            Next: runJobSteps
+          runJobSteps:
+            Type: Task
+            Resource: !GetAtt RunJobSteps.Arn
+            ResultPath: $.job
+            Next: choiceStep
+            Catch:
+              - ErrorEquals: ['States.ALL']
+                Next: catchError
+          stopJob:
+            Type: Task
+            Resource: !GetAtt StopJob.Arn
+            ResultPath: $.job
+            End: true
+          choiceStep:
+            Type: Choice
+            Choices:
+              - Variable: $.job.current
+                NumericLessThanPath: $.job.stepCount
+                Next: runJobSteps
+            Default: stopJob
+          catchError:
+            Type: Task
+            Resource: !GetAtt CatchError.Arn
+            End: true
+
+# resources:
+  # Resources:
