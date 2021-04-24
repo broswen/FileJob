@@ -2,6 +2,7 @@ service: filejob
 frameworkVersion: '2'
 
 plugins:
+  - serverless-plugin-typescript
   - serverless-step-functions
 
 provider:

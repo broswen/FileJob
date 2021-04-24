@@ -29,6 +29,13 @@ This StateMachine definition allows you to define multiple S3 Move/Copy operatio
     "action": "MOVE",
     "source": "bucket1/file1",
     "destination": "bucket3/file1"
+  },
+  {
+    "id": 3,
+    "name": "step4",
+    "action": "MERGE",
+    "sources": [ "bucket1/file1", "bucket2/file2", "bucket3/file3"],
+    "destination": "bucket4/file1"
   }
 ]
 }
