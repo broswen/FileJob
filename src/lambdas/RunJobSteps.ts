@@ -104,7 +104,7 @@ async function mergeFilesMultipart(step: { id: string, action: string, name: str
 
   // for every file, download file in chunks of 10MB
   // upload each chunk as a part
-  const chunkSize: number = 10000001 // 10MB
+  const chunkSize: number = 5242880 + 100 // 5MiB + 100B
   let chunk: Buffer = Buffer.from([])
   for (let file of files) {
     console.log(`Downloading ${file.bucket}/${file.key}`)
