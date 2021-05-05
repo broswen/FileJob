@@ -10,23 +10,28 @@ provider:
   runtime: nodejs12.x
   lambdaHashingVersion: 20201221
 
-  memorySize: 512
-  timeout: 200
-
   stage: dev
   region: us-east-1
 
   iamRoleStatements:
-    - Effect: "Allow"
+    - Effect: Allow
       Action:
         - s3:GetObject
         - s3:PutObject
         - s3:CopyObject
         - s3:DeleteObject
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+      Resource: !GetAtt JobsTable.Arn
 
-  # environment:
-  #   variable1: value1
+  environment:
+    JOBSTABLE: !Ref JobsTable
+    JOBSBUCKET: !Ref JobsBucket
 
 functions:
   StartJob:
@@ -37,6 +42,41 @@ functions:
     handler: src/lambdas/StopJob.handler
   CatchError:
     handler: src/lambdas/CatchError.handler
+
+  CreateJob:
+    handler: src/lambdas/CreateJob.handler
+    events:
+      - httpApi:
+          path: /job
+          method: post
+
+  GetJob:
+    handler: src/lambdas/GetJob.handler
+    events:
+      - httpApi:
+          path: /job/{id}
+          method: get
+
+  UpdateJob:
+    handler: src/lambdas/UpdateJob.handler
+    events:
+      - httpApi:
+          path: /job/{id}
+          method: put
+
+  DeleteJob:
+    handler: src/lambdas/DeleteJob.handler
+    events:
+      - httpApi:
+          path: /job/{id}
+          method: delete
+
+  QueryJobs:
+    handler: src/lambdas/QueryJobs.handler
+    events:
+      - httpApi:
+          path: /jobs
+          method: get
 
 stepFunctions:
   stateMachines:
@@ -76,5 +116,25 @@ stepFunctions:
             Resource: !GetAtt CatchError.Arn
             End: true
 
-# resources:
-  # Resources:
+resources:
+  Resources:
+    JobsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-jobs
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+
+    JobsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:service}-${self:provider.stage}-jobs
