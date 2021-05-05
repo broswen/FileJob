@@ -1,12 +1,11 @@
 'use strict';
 
+import { AttributeValue, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { S3Client } from "@aws-sdk/client-s3";
+import { JobDetails } from "../models/JobTypes";
+import { JobService } from "../services/JobService";
+import { JobServiceImpl } from "../services/JobServiceImpl";
 
-const KSUID = require('ksuid')
-const { EventBridgeClient } = require('@aws-sdk/client-eventbridge')
-const ebClient = new EventBridgeClient({})
-
-const pg = require('pg')
-const pool = new pg.Pool()
 
 const middy = require('@middy/core');
 const createError = require('http-errors');
@@ -15,19 +14,9 @@ const jsonBodyParser = require('@middy/http-json-body-parser');
 const httpErrorHandler = require('@middy/http-error-handler');
 const validator = require('@middy/validator');
 
-const runQuery = async (q, v) => {
-  const client = await pool.connect()
-  let res
-  try {
-    res = client.query(q, v)
-  } catch (error) {
-    console.error(error)
-    throw error
-  } finally {
-    client.release()
-  }
-  return res
-}
+const s3Client: S3Client = new S3Client({})
+const ddbClient: DynamoDBClient = new DynamoDBClient({})
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client)
 
 const inputSchema: Object = {
   type: 'object',
@@ -35,7 +24,7 @@ const inputSchema: Object = {
     queryStringParameters: {
       type: 'object',
       properties: {
-        page: { type: 'number', minimum: 0 },
+        exclusiveStartKey: { type: 'string', minLength: 1 },
         limit: { type: 'number', minimum: 1 }
       },
     }
@@ -43,32 +32,30 @@ const inputSchema: Object = {
 }
 
 
-const getJob = async (event, context) => {
-  context.callbackWaitsForEmptyEventLoop = false;
+const queryJobs = async (event, context) => {
 
-  let query = `SELECT * FROM jobs ORDER BY jobid DESC LIMIT 25`
-  if (event.queryStringParameters) {
-    query = `SELECT * FROM jobs ORDER BY jobid DESC LIMIT ${event.queryStringParameters.limit || 25} OFFSET ${event.queryStringParameters.page || 0}`
+  let queryResponse: { jobDetails: JobDetails[], lastEvaluatedKey: { [key: string]: AttributeValue } }
+  let limit: number = 25
+  if (event.queryStringParameters && event.queryStringParameters.limit) {
+    limit = event.queryStringParameters.limit
   }
-  let pgRes;
 
   try {
-    pgRes = await runQuery(query, [])
+    queryResponse = await jobService.listJobs(limit)
   } catch (error) {
     console.error(error)
     throw createError(500)
   }
 
-
   return {
     statusCode: 200,
-    body: JSON.stringify(pgRes.rows.map(job => ({ id: job.jobid, name: job.name })))
+    body: JSON.stringify(queryResponse)
   };
 };
 
-const handler = middy(getJob)
+const handler = middy(queryJobs)
   .use(jsonBodyParser())
-  // .use(validator({ inputSchema }))
+  .use(validator({ inputSchema }))
   .use(httpErrorHandler())
 
 module.exports = { handler }

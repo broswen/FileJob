@@ -1,4 +1,4 @@
-import { DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandInput, PutItemCommandOutput } from "@aws-sdk/client-dynamodb";
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandInput, PutItemCommandOutput, ScanCommand, ScanCommandInput, ScanCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DeleteObjectCommand, DeleteObjectCommandInput, GetObjectCommand, GetObjectCommandInput, GetObjectCommandOutput, PutObjectCommand, PutObjectCommandInput, PutObjectCommandOutput, S3Client } from "@aws-sdk/client-s3";
 import { Job, JobDetails, JobState, JobStep } from "../models/JobTypes";
 import { JobService } from "./JobService";
@@ -12,6 +12,7 @@ export class JobServiceImpl implements JobService {
         this.ddbClient = ddbClient
         this.s3Client = s3Client
     }
+
 
     async putJob(job: Job): Promise<Job> {
         console.log(JSON.stringify(job))
@@ -165,5 +166,38 @@ export class JobServiceImpl implements JobService {
         }
 
         return id
+    }
+
+    async listJobs(limit: number = 25, exclusiveStartKey?: { [key: string]: AttributeValue }): Promise<{ jobDetails: JobDetails[], lastEvaluatedKey: { [key: string]: AttributeValue } }> {
+        let params: ScanCommandInput = {
+            TableName: process.env.JOBSTABLE,
+            Limit: limit,
+        }
+
+        if (exclusiveStartKey !== undefined) {
+            params.ExclusiveStartKey = exclusiveStartKey
+        }
+
+        let scanResponse: ScanCommandOutput
+        try {
+            scanResponse = await this.ddbClient.send(new ScanCommand(params))
+        } catch (error) {
+            console.error(error)
+            throw error
+        }
+
+        if (scanResponse.Count === 0) {
+            return { jobDetails: [], lastEvaluatedKey: scanResponse.LastEvaluatedKey }
+        }
+
+        const jobDetails: JobDetails[] = scanResponse.Items.map(item => ({
+            id: item.id.S,
+            name: item.jobname.S,
+            schedule: item.schedule.S,
+            updated: new Date(item.updated.S),
+            state: item.jobstate.S as JobState
+        }))
+
+        return { jobDetails, lastEvaluatedKey: scanResponse.LastEvaluatedKey }
     }
 }

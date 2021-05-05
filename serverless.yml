@@ -27,6 +27,7 @@ provider:
         - dynamodb:GetItem
         - dynamodb:DeleteItem
         - dynamodb:Query
+        - dynamodb:Scan
       Resource: !GetAtt JobsTable.Arn
 
   environment:
