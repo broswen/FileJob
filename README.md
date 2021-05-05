@@ -23,7 +23,7 @@ A service to manage file job definitions and schedules with a REST API.
 3. An EventBridge scheduled rule is activated based on the provided job schedule and state. This invokes a StepFunction Workflow to execute the job steps.
 
 
-4. The StepFunction Workflow generates this JSON from details stored in DynamoDB and JSON steps in S3.
+4. The StepFunction Workflow generates this JSON from details stored in DynamoDB and the JSON stored in S3.
 ```json
 {
 "id": "4lw5kjh435lkj",
