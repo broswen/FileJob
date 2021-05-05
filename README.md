@@ -1,11 +1,34 @@
-This StateMachine definition allows you to define multiple S3 Move/Copy operations with JSON and run them as a job.
+A service to manage file job definitions and schedules with a REST API.
 
-1. Define job with JSON
+1. POST a job definition to the endpoint to create a new job
 ```json
 {
-"id": "abc12",
-"name": "copy files",
-"stepCount": 3,
+  "name": "test-copy-job",
+  "schedule": "cron(0 12 * * ? *)",
+  "state": "ENABLED",
+  "steps": [
+  {
+    "id": 0,
+    "name": "step1",
+    "action": "COPY",
+    "source": "bucket1/file1",
+    "destination": "bucket2/file1"
+  }
+  ]
+}
+```
+
+2. GET /job/{id}, PUT /job/{id}, and DELETE /job/id to manage the job through the API.
+
+3. An EventBridge scheduled rule is activated based on the provided job schedule. This invokes a StepFunction Workflow to execute the job steps.
+
+
+4. The StepFunction Workflow generates this JSON from details stored in DynamoDB and JSON steps in S3.
+```json
+{
+"id": "4lw5kjh435lkj",
+"name": "test-copy-job",
+"stepCount": 1,
 "start": 0,
 "current": 0,
 "steps": [
@@ -15,27 +38,6 @@ This StateMachine definition allows you to define multiple S3 Move/Copy operatio
     "action": "COPY",
     "source": "bucket1/file1",
     "destination": "bucket2/file1"
-  },
-  {
-    "id": 1,
-    "name": "step2",
-    "action": "COPY",
-    "source": "bucket1/file1",
-    "destination": "bucket2/file1"
-  },
-  {
-    "id": 2,
-    "name": "step3",
-    "action": "MOVE",
-    "source": "bucket1/file1",
-    "destination": "bucket3/file1"
-  },
-  {
-    "id": 3,
-    "name": "step4",
-    "action": "MERGE",
-    "sources": [ "bucket1/file1", "bucket2/file2", "bucket3/file3"],
-    "destination": "bucket4/file1"
   }
 ]
 }
