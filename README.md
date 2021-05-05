@@ -51,5 +51,5 @@ A service to manage file job definitions and schedules with a REST API.
 - [ ] generate EventBridge during job creation
 - [ ] implement PUT update endpoint
 - [ ] complete full pagination implementation
-- [ ] secure API with JWT and custom authorizer
+- [x] secure API with api keys and usage plan throttling
 - [ ] typed errors

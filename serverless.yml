@@ -14,6 +14,14 @@ provider:
   stage: dev
   region: us-east-1
 
+  apiGateway:
+    apiKeys:
+      - testKey
+    usagePlan:
+      throttle:
+        burstLimit: 5
+        rateLimit: 3
+
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -50,37 +58,42 @@ functions:
   CreateJob:
     handler: src/lambdas/CreateJob.handler
     events:
-      - httpApi:
+      - http:
           path: /job
           method: post
+          private: true
 
   GetJob:
     handler: src/lambdas/GetJob.handler
     events:
-      - httpApi:
+      - http:
           path: /job/{id}
           method: get
+          private: true
 
   UpdateJob:
     handler: src/lambdas/UpdateJob.handler
     events:
-      - httpApi:
+      - http:
           path: /job/{id}
           method: put
+          private: true
 
   DeleteJob:
     handler: src/lambdas/DeleteJob.handler
     events:
-      - httpApi:
+      - http:
           path: /job/{id}
           method: delete
+          private: true
 
   QueryJobs:
     handler: src/lambdas/QueryJobs.handler
     events:
-      - httpApi:
+      - http:
           path: /jobs
           method: get
+          private: true
 
 stepFunctions:
   stateMachines:
