@@ -52,3 +52,4 @@ A service to manage file job definitions and schedules with a REST API.
 - [ ] implement PUT update endpoint
 - [ ] complete full pagination implementation
 - [ ] secure API with JWT and custom authorizer
+- [ ] typed errors
