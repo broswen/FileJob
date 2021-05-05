@@ -1,40 +1,44 @@
 'use strict';
 
-module.exports.handler = async (event) => {
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { S3Client } from "@aws-sdk/client-s3";
+import { JobDetails, JobStep } from "../models/JobTypes";
+import { JobService } from "../services/JobService";
+import { JobServiceImpl } from "../services/JobServiceImpl";
 
-  // INPUT
+const s3Client: S3Client = new S3Client({})
+const ddbClient: DynamoDBClient = new DynamoDBClient({})
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client)
+
+module.exports.handler = async (event: { id: string }) => {
+
   // {
-  // "id": "abc12",
-  // "name": "copy files",
-  // "stepCount": 3,
-  // "start": 0,
-  // "current": 0,
-  // "steps": [
-  //   {
-  //     "id": 0,
-  //     "name": "step1",
-  //     "action": "COPY",
-  //     "source": "bucket1/file1",
-  //     "destination": "bucket2/file1"
-  //   },
-  //   {
-  //     "id": 1,
-  //     "name": "step2",
-  //     "action": "COPY",
-  //     "source": "bucket1/file1",
-  //     "destination": "bucket2/file1"
-  //   },
-  //   {
-  //     "id": 2,
-  //     "name": "step3",
-  //     "action": "MOVE",
-  //     "source": "bucket1/file1",
-  //     "destination": "bucket3/file1"
-  //   }
-  // ]
+  //   id: 'kl32jlkj34'
   // }
 
-  console.log(`Starting ${event.name} (${event.id}) at ${new Date().toISOString()}`)
+  let jobDetails: JobDetails
+  try {
+    jobDetails = await jobService.getJobDetails(event.id)
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+  let jobSteps: JobStep[]
+  try {
+    jobSteps = await jobService.getJobSteps(event.id)
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
 
-  return event
+  console.log(`Starting ${event.id} at ${new Date().toISOString()}`)
+
+  return {
+    id: jobDetails.id,
+    name: jobDetails.name,
+    stepCount: jobSteps.length,
+    start: 0,
+    current: 0,
+    steps: jobSteps
+  }
 };
