@@ -46,3 +46,9 @@ A service to manage file job definitions and schedules with a REST API.
 2. StepFunctions iterates through the steps defined in the job definition.
 
 ![flowchart](./flow.png)
+
+### TODO
+- [ ] generate EventBridge during job creation
+- [ ] implement PUT update endpoint
+- [ ] complete full pagination implementation
+- [ ] secure API with JWT and custom authorizer

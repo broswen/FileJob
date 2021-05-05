@@ -9,7 +9,8 @@ provider:
   name: aws
   runtime: nodejs12.x
   lambdaHashingVersion: 20201221
-
+  timeout: 3
+  memorySize: 128
   stage: dev
   region: us-east-1
 
@@ -39,6 +40,8 @@ functions:
     handler: src/lambdas/StartJob.handler
   RunJobSteps:
     handler: src/lambdas/RunJobSteps.handler
+    timeout: 120
+    memorySize: 512
   StopJob:
     handler: src/lambdas/StopJob.handler
   CatchError:
