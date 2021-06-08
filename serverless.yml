@@ -62,6 +62,7 @@ functions:
           path: /job
           method: post
           private: true
+          cors: true
 
   GetJob:
     handler: src/lambdas/GetJob.handler
@@ -70,6 +71,7 @@ functions:
           path: /job/{id}
           method: get
           private: true
+          cors: true
 
   UpdateJob:
     handler: src/lambdas/UpdateJob.handler
@@ -78,6 +80,7 @@ functions:
           path: /job/{id}
           method: put
           private: true
+          cors: true
 
   DeleteJob:
     handler: src/lambdas/DeleteJob.handler
@@ -86,6 +89,7 @@ functions:
           path: /job/{id}
           method: delete
           private: true
+          cors: true
 
   QueryJobs:
     handler: src/lambdas/QueryJobs.handler
@@ -94,6 +98,7 @@ functions:
           path: /jobs
           method: get
           private: true
+          cors: true
 
 stepFunctions:
   stateMachines:

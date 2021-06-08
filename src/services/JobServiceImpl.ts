@@ -65,9 +65,10 @@ export class JobServiceImpl implements JobService {
             throw error
         }
 
+        // TODO create eventbridge scheduled rule
+
         return job
     }
-
 
     async getJobDetails(id: string): Promise<JobDetails> {
         const params: GetItemCommandInput = {
@@ -146,12 +147,8 @@ export class JobServiceImpl implements JobService {
             }
         }
 
-        try {
-            await this.ddbClient.send(new DeleteItemCommand(params))
-        } catch (error) {
-            console.error(error)
-            throw error
-        }
+
+        // TODO delete eventbridge rule
 
         const params2: DeleteObjectCommandInput = {
             Bucket: process.env.JOBSBUCKET,
@@ -160,6 +157,13 @@ export class JobServiceImpl implements JobService {
 
         try {
             await this.s3Client.send(new DeleteObjectCommand(params2))
+        } catch (error) {
+            console.error(error)
+            throw error
+        }
+
+        try {
+            await this.ddbClient.send(new DeleteItemCommand(params))
         } catch (error) {
             console.error(error)
             throw error
