@@ -16,7 +16,7 @@ const validator = require('@middy/validator');
 
 const s3Client: S3Client = new S3Client({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
-const jobService: JobService = new JobServiceImpl(ddbClient, s3Client)
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client, undefined)
 
 const inputSchema: Object = {
   type: 'object',

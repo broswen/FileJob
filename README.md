@@ -49,7 +49,7 @@ A service to manage file job definitions and schedules with a REST API.
 
 ### TODO
 - [x] generate EventBridge during job creation
-- [ ] implement PUT update endpoint
+- [x] implement PUT update endpoint
 - [ ] Implement asynchronous job definition validation (block jobs from running if the definition is malformed)
 - [ ] complete full pagination implementation
 - [x] secure API with api keys and usage plan throttling

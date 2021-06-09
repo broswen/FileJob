@@ -1,13 +1,14 @@
 'use strict';
 
-import { PutRuleCommand, PutRuleCommandInput, PutRuleCommandOutput, PutTargetsCommand, PutTargetsCommandInput, PutTargetsCommandOutput } from "@aws-sdk/client-eventbridge";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
+import { S3Client } from "@aws-sdk/client-s3";
+import { Job } from "../models/JobTypes";
+import { JobService } from "../services/JobService";
+import { JobServiceImpl } from "../services/JobServiceImpl";
+
 
 const KSUID = require('ksuid')
-const { EventBridgeClient } = require('@aws-sdk/client-eventbridge')
-const ebClient = new EventBridgeClient({})
-
-const pg = require('pg')
-const pool = new pg.Pool()
 
 const middy = require('@middy/core');
 const createError = require('http-errors');
@@ -16,19 +17,10 @@ const jsonBodyParser = require('@middy/http-json-body-parser');
 const httpErrorHandler = require('@middy/http-error-handler');
 const validator = require('@middy/validator');
 
-const runQuery = async (q, v) => {
-  const client = await pool.connect()
-  let res
-  try {
-    res = client.query(q, v)
-  } catch (error) {
-    console.error(error)
-    throw error
-  } finally {
-    client.release()
-  }
-  return res
-}
+const ebClient = new EventBridgeClient({})
+const s3Client: S3Client = new S3Client({})
+const ddbClient: DynamoDBClient = new DynamoDBClient({})
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client, ebClient)
 
 const inputSchema: Object = {
   type: 'object',
@@ -36,88 +28,50 @@ const inputSchema: Object = {
     body: {
       type: 'object',
       properties: {
+        id: { type: 'string', minLength: 1 },
         name: { type: 'string', minLength: 1, pattern: '[a-zA-Z0-9_-]+' },
         schedule: { type: 'string', minLength: 1 },
-        source: { type: 'string', minLength: 1 },
-        destination: { type: 'string', minLength: 1 },
-        action: { type: 'string', minLength: 1 },
-        state: { type: 'boolean' }
+        state: { type: 'string', enum: ['ENABLED', 'DISABLED'] },
+        steps: {
+          type: 'array', items: { type: 'object' }
+        }
       },
-      required: ['name', 'schedule', 'source', 'destination', 'action', 'state']
-    }
-  },
-  pathParameters: {
-    type: 'object',
-    properties: {
-      id: { type: 'string', minLength: 1 }
+      required: ['name', 'schedule', 'state', 'steps']
     },
-    required: ['id']
+    pathParameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', minLength: 1 }
+      },
+      required: ['id']
+    }
   }
 }
 
 
 const updateJob = async (event, context) => {
-  context.callbackWaitsForEmptyEventLoop = false;
 
-  const id = event.pathParameters.id
-
-  // create eventbridge rule with ksuid, schedule, constant input
-  // input is { action, source, destination }
-  const params: PutRuleCommandInput = {
-    Name: id,
-    ScheduleExpression: event.body.schedule,
-    State: event.body.state ? 'ENABLED' : 'DISABLED',
-    RoleArn: process.env.EBROLE,
+  const job: Job = {
+    id: event.pathParameters.id,
+    name: event.body.name,
+    schedule: event.body.schedule,
+    updated: new Date(),
+    state: event.body.state,
+    steps: event.body.steps
   }
-
-  const params2: PutTargetsCommandInput = {
-    Rule: id,
-    Targets: [{
-      Arn: process.env.FILEJOBSM,
-      Id: id,
-      RoleArn: process.env.EBROLE,
-      Input: JSON.stringify({
-        id: id,
-        name: event.body.name,
-        rule: id,
-        action: event.body.action,
-        source: event.body.source,
-        destination: event.body.destination
-      }),
-    }]
-  }
-
-
-  let putRuleOutput: PutRuleCommandOutput
-  let putTargetOutput: PutTargetsCommandOutput
-  try {
-    putRuleOutput = await ebClient.send(new PutRuleCommand(params))
-    putTargetOutput = await ebClient.send(new PutTargetsCommand(params2))
-  } catch (error) {
-    console.error(error)
-    throw createError(500)
-  }
-
-  // get ARN after created
-  const ruleArn = putRuleOutput.RuleArn
-
-  // put into postgres with ksuid, name, arn, schedule, source, destination, action
-  const query = `UPDATE jobs SET name = $1, schedule = $2, source = $3, destination = $4, action = $5, state = $6 WHERE jobid = $7`
-  let pgRes;
 
   try {
-    pgRes = await runQuery(query, [event.body.name, event.body.schedule, event.body.source, event.body.destination, event.body.action, event.body.state, id])
+    await jobService.putJob(job)
   } catch (error) {
     console.error(error)
-    throw createError(500)
+    throw new createError(500)
   }
 
-  // return name, ksuid
   return {
     statusCode: 200,
     body: JSON.stringify({
       name: event.body.name,
-      id
+      id: event.pathParameters.id
     })
   };
 };
