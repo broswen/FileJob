@@ -17,6 +17,54 @@ A service to manage file job definitions and schedules with a REST API.
   ]
 }
 ```
+Available `actions`s are `COPY`, `MOVE`, `DELETE`, and `MERGE`. 
+For example, the job definition below merges 2 files together, copies the result into two different locations, and deletes the source files. The job runs once a day at 1am.
+
+```json
+{
+  "name": "merge-copy-delete",
+  "schedule": "cron(0 1 * * ? *)",
+  "state": "ENABLED",
+  "steps": [
+    {
+      "id": 0,
+      "name": "step1",
+      "action": "MERGE",
+      "sources": [
+        "bucket1/file1.txt",
+        "bucket1/file2.txt"
+      ],
+      "destination": "bucket1/merged_files.txt"
+    },
+    {
+      "id": 1,
+      "name": "step2",
+      "action": "COPY",
+      "source": "bucket1/merged_files.txt",
+      "destination": "bucket2/merged_files.txt"
+    },
+    {
+      "id": 2,
+      "name": "step3",
+      "action": "MOVE",
+      "source": "bucket1/merged_files.txt",
+      "destination": "bucket3/merged_files.txt"
+    },
+    {
+      "id": 3,
+      "name": "step4",
+      "action": "DELETE",
+      "source": "bucket1/file1.txt"
+    },
+    {
+      "id": 4,
+      "name": "step5",
+      "action": "DELETE",
+      "source": "bucket1/file2.txt"
+    }
+  ]
+}
+```
 
 2. GET /job/{id}, PUT /job/{id}, and DELETE /job/{id} to manage the job through the API.
 
