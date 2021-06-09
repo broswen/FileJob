@@ -21,6 +21,7 @@ It stores job metadata in DyanmoDB and job definitions in S3.
 }
 ```
 Available `actions`s are `COPY`, `MOVE`, `DELETE`, and `MERGE`. 
+
 For example, the job definition below merges 2 files together, copies the result into two different locations, and deletes the source files. The job runs once a day at 1am.
 
 ```json
