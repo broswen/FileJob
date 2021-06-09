@@ -3,6 +3,9 @@ A service to manage file job definitions and schedules with a REST API.
 This system provides functionality to create and manage scheduled S3 file job definitions through a REST API. It uses API Gateway and Lambda for the REST API backend logic and StepFunctions for orchestrating the Lambdas to run the S4 file job definitions. 
 It stores job metadata in DyanmoDB and job definitions in S3.
 
+
+![diagram](./diagram.png)
+
 1. POST a job definition to the endpoint to create a new job
 ```json
 {
