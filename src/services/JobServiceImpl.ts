@@ -1,4 +1,5 @@
 import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandInput, PutItemCommandOutput, ScanCommand, ScanCommandInput, ScanCommandOutput } from "@aws-sdk/client-dynamodb";
+import { DeleteRuleCommand, DeleteRuleCommandInput, EventBridgeClient, ListTargetsByRuleCommand, ListTargetsByRuleCommandInput, ListTargetsByRuleCommandOutput, PutRuleCommand, PutRuleCommandInput, PutRuleCommandOutput, PutTargetsCommand, PutTargetsCommandInput, PutTargetsCommandOutput, RemoveTargetsCommand, RemoveTargetsCommandInput } from "@aws-sdk/client-eventbridge";
 import { DeleteObjectCommand, DeleteObjectCommandInput, GetObjectCommand, GetObjectCommandInput, GetObjectCommandOutput, PutObjectCommand, PutObjectCommandInput, PutObjectCommandOutput, S3Client } from "@aws-sdk/client-s3";
 import { Job, JobDetails, JobState, JobStep } from "../models/JobTypes";
 import { JobService } from "./JobService";
@@ -8,9 +9,11 @@ export class JobServiceImpl implements JobService {
 
     private ddbClient: DynamoDBClient
     private s3Client: S3Client
-    constructor(ddbClient: DynamoDBClient, s3Client: S3Client) {
+    private ebClient: EventBridgeClient
+    constructor(ddbClient: DynamoDBClient, s3Client: S3Client, ebClient: EventBridgeClient) {
         this.ddbClient = ddbClient
         this.s3Client = s3Client
+        this.ebClient = ebClient
     }
 
 
@@ -66,6 +69,36 @@ export class JobServiceImpl implements JobService {
         }
 
         // TODO create eventbridge scheduled rule
+        const params3: PutRuleCommandInput = {
+            Name: job.id,
+            ScheduleExpression: job.schedule,
+            State: job.state ? 'ENABLED' : 'DISABLED',
+            RoleArn: process.env.EBROLE,
+        }
+
+        const params4: PutTargetsCommandInput = {
+            Rule: job.id,
+            Targets: [{
+                Arn: process.env.JOBRUNNERSM,
+                Id: job.id,
+                RoleArn: process.env.EBROLE,
+                Input: JSON.stringify({
+                    id: job.id,
+                }),
+            }]
+        }
+
+        let putRuleOutput: PutRuleCommandOutput
+        let putTargetOutput: PutTargetsCommandOutput
+        try {
+            putRuleOutput = await this.ebClient.send(new PutRuleCommand(params3))
+            putTargetOutput = await this.ebClient.send(new PutTargetsCommand(params4))
+        } catch (error) {
+            throw error
+        }
+
+        // get ARN after created
+        const ruleArn = putRuleOutput.RuleArn
 
         return job
     }
@@ -135,7 +168,47 @@ export class JobServiceImpl implements JobService {
     }
 
     async deleteJob(id: string): Promise<string> {
-        const params: DeleteItemCommandInput = {
+
+        var job: JobDetails
+        try {
+            job = await this.getJobDetails(id)
+        } catch (error) {
+            console.error(error)
+            throw error
+        }
+
+        let listTargetsInput: ListTargetsByRuleCommandInput = {
+            Rule: job.id
+        }
+
+        let targets: ListTargetsByRuleCommandOutput
+        try {
+            targets = await this.ebClient.send(new ListTargetsByRuleCommand(listTargetsInput))
+        } catch (error) {
+            console.error(error)
+            throw error
+        }
+
+
+        const removeTargetsInput: RemoveTargetsCommandInput = {
+            Rule: job.id,
+            Ids: targets.Targets.map(target => target.Id)
+        }
+
+        const deleteRuleInput: DeleteRuleCommandInput = {
+            Name: job.id,
+        }
+
+        try {
+            await this.ebClient.send(new RemoveTargetsCommand(removeTargetsInput))
+            await this.ebClient.send(new DeleteRuleCommand(deleteRuleInput))
+        } catch (error) {
+            console.error(error)
+            throw error
+        }
+
+
+        const deleteItemInput: DeleteItemCommandInput = {
             TableName: process.env.JOBSTABLE,
             Key: {
                 PK: {
@@ -147,23 +220,20 @@ export class JobServiceImpl implements JobService {
             }
         }
 
-
-        // TODO delete eventbridge rule
-
-        const params2: DeleteObjectCommandInput = {
+        const deleteObjectInput: DeleteObjectCommandInput = {
             Bucket: process.env.JOBSBUCKET,
             Key: id
         }
 
         try {
-            await this.s3Client.send(new DeleteObjectCommand(params2))
+            await this.s3Client.send(new DeleteObjectCommand(deleteObjectInput))
         } catch (error) {
             console.error(error)
             throw error
         }
 
         try {
-            await this.ddbClient.send(new DeleteItemCommand(params))
+            await this.ddbClient.send(new DeleteItemCommand(deleteItemInput))
         } catch (error) {
             console.error(error)
             throw error

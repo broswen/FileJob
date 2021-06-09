@@ -8,7 +8,7 @@ import { JobServiceImpl } from "../services/JobServiceImpl";
 
 const s3Client: S3Client = new S3Client({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
-const jobService: JobService = new JobServiceImpl(ddbClient, s3Client)
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client, undefined)
 
 module.exports.handler = async (event: { id: string }) => {
 

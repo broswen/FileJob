@@ -1,6 +1,7 @@
 'use strict';
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import { S3Client } from "@aws-sdk/client-s3";
 import { JobService } from "../services/JobService";
 import { JobServiceImpl } from "../services/JobServiceImpl";
@@ -9,7 +10,8 @@ const KSUID = require('ksuid')
 
 const s3Client: S3Client = new S3Client({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
-const jobService: JobService = new JobServiceImpl(ddbClient, s3Client)
+const ebClient = new EventBridgeClient({})
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client, ebClient)
 
 const middy = require('@middy/core');
 const createError = require('http-errors');

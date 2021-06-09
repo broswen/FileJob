@@ -48,7 +48,7 @@ A service to manage file job definitions and schedules with a REST API.
 ![flowchart](./flow.png)
 
 ### TODO
-- [ ] generate EventBridge during job creation
+- [x] generate EventBridge during job creation
 - [ ] implement PUT update endpoint
 - [ ] Implement asynchronous job definition validation (block jobs from running if the definition is malformed)
 - [ ] complete full pagination implementation

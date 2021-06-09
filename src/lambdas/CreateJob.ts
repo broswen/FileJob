@@ -1,6 +1,7 @@
 'use strict';
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import { S3Client } from "@aws-sdk/client-s3";
 import { Job } from "../models/JobTypes";
 import { JobService } from "../services/JobService";
@@ -16,9 +17,10 @@ const jsonBodyParser = require('@middy/http-json-body-parser');
 const httpErrorHandler = require('@middy/http-error-handler');
 const validator = require('@middy/validator');
 
+const ebClient = new EventBridgeClient({})
 const s3Client: S3Client = new S3Client({})
 const ddbClient: DynamoDBClient = new DynamoDBClient({})
-const jobService: JobService = new JobServiceImpl(ddbClient, s3Client)
+const jobService: JobService = new JobServiceImpl(ddbClient, s3Client, ebClient)
 
 const inputSchema: Object = {
   type: 'object',
@@ -60,8 +62,6 @@ const createJob = async (event, context) => {
     console.error(error)
     throw new createError(500)
   }
-
-  //create eventbridge schedule rule to start stepfunction with job id
 
   return {
     statusCode: 200,
