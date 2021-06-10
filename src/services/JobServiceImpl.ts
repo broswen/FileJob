@@ -127,8 +127,6 @@ export class JobServiceImpl implements JobService {
             throw new Error('Job not found')
         }
 
-        console.log(JSON.stringify(getItemResponse.Item))
-
         return {
             id: getItemResponse.Item.id.S,
             name: getItemResponse.Item.jobname.S,

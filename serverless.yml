@@ -75,6 +75,18 @@ functions:
     handler: src/lambdas/CatchError.handler
     role: !GetAtt StepFunctionsRole.Arn
 
+  ValidateJob:
+    handler: src/lambdas/ValidateJob.handler
+    events:
+      - sqs:
+          arn: !GetAtt ValidationQueue.Arn
+          batchSize: 10
+          maximumBatchingWindow: 30
+          
+    environment:
+      JOBSTABLE: !Ref JobsTable
+      JOBSBUCKET: !Ref JobsBucket
+
 
   CreateJob:
     handler: src/lambdas/CreateJob.handler
@@ -200,6 +212,31 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: ${self:service}-${self:provider.stage}-jobs
+        NotificationConfiguration:
+          QueueConfigurations:
+            - Event: s3:ObjectCreated:*
+              Queue: !GetAtt ValidationQueue.Arn
+
+    ValidationQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-validationqueue
+
+    QueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: s3.amazonaws.com
+              Action:
+                - SQS:SendMessage
+              Resource: !GetAtt ValidationQueue.Arn
+              # Condition:
+                # ArnLike: {"aws:SourceArn": !GetAtt JobsBucket.Arn}
+        Queues:
+          - !Ref ValidationQueue
 
     EventBridgeRole:
       Type: AWS::IAM::Role

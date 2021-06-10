@@ -14,7 +14,7 @@ export type JobStep = {
     action: JobAction
     source?: string
     sources?: string[]
-    destination: string
+    destination?: string
 }
 
 export type JobAction = 'COPY' | 'MOVE' | 'DELETE' | 'MERGE'
