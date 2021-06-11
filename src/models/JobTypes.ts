@@ -6,6 +6,7 @@ export type JobDetails = {
     schedule: string
     updated: Date
     state: JobState
+    validationState: JobValidationState
 }
 
 export type JobStep = {
@@ -19,3 +20,4 @@ export type JobStep = {
 
 export type JobAction = 'COPY' | 'MOVE' | 'DELETE' | 'MERGE'
 export type JobState = 'ENABLED' | 'DISABLED'
+export type JobValidationState = 'VALIDATING' | 'VALID' | 'INVALID'

@@ -1,7 +1,7 @@
-import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandInput, PutItemCommandOutput, ScanCommand, ScanCommandInput, ScanCommandOutput } from "@aws-sdk/client-dynamodb";
+import { AttributeValue, DeleteItemCommand, DeleteItemCommandInput, DynamoDBClient, GetItemCommand, GetItemCommandInput, GetItemCommandOutput, PutItemCommand, PutItemCommandInput, PutItemCommandOutput, ScanCommand, ScanCommandInput, ScanCommandOutput, UpdateItemCommand, UpdateItemCommandInput, UpdateItemCommandOutput } from "@aws-sdk/client-dynamodb";
 import { DeleteRuleCommand, DeleteRuleCommandInput, EventBridgeClient, ListTargetsByRuleCommand, ListTargetsByRuleCommandInput, ListTargetsByRuleCommandOutput, PutRuleCommand, PutRuleCommandInput, PutRuleCommandOutput, PutTargetsCommand, PutTargetsCommandInput, PutTargetsCommandOutput, RemoveTargetsCommand, RemoveTargetsCommandInput } from "@aws-sdk/client-eventbridge";
 import { DeleteObjectCommand, DeleteObjectCommandInput, GetObjectCommand, GetObjectCommandInput, GetObjectCommandOutput, PutObjectCommand, PutObjectCommandInput, PutObjectCommandOutput, S3Client } from "@aws-sdk/client-s3";
-import { Job, JobDetails, JobState, JobStep } from "../models/JobTypes";
+import { Job, JobDetails, JobState, JobStep, JobValidationState } from "../models/JobTypes";
 import { JobService } from "./JobService";
 
 
@@ -16,9 +16,38 @@ export class JobServiceImpl implements JobService {
         this.ebClient = ebClient
     }
 
+    async setJobValidationState(id: string, validationState: JobValidationState): Promise<string> {
+        const params: UpdateItemCommandInput = {
+            TableName: process.env.JOBSTABLE,
+            Key: {
+                PK: {
+                    S: `J#${id}`
+                },
+                SK: {
+                    S: `J#${id}`
+                }
+            },
+            ConditionExpression: 'SET #v = :v',
+            ExpressionAttributeNames: {
+                '#v': 'validationstate'
+            },
+            ExpressionAttributeValues: {
+                ':v': {
+                    'S': validationState
+                }
+            }
+        }
+
+        let updateItemResponse: UpdateItemCommandOutput
+        try {
+            updateItemResponse = await this.ddbClient.send(new UpdateItemCommand(params))
+        } catch (error) {
+            throw error
+        }
+        return id
+    }
 
     async putJob(job: Job): Promise<Job> {
-        console.log(JSON.stringify(job))
         const params: PutItemCommandInput = {
             TableName: process.env.JOBSTABLE,
             Item: {
@@ -42,6 +71,9 @@ export class JobServiceImpl implements JobService {
                 },
                 jobstate: {
                     S: job.state
+                },
+                validationstate: {
+                    S: job.validationState
                 }
             }
         }
@@ -50,7 +82,6 @@ export class JobServiceImpl implements JobService {
         try {
             putItemResponse = await this.ddbClient.send(new PutItemCommand(params))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -64,7 +95,6 @@ export class JobServiceImpl implements JobService {
         try {
             putObjectResponse = await this.s3Client.send(new PutObjectCommand(params2))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -119,7 +149,6 @@ export class JobServiceImpl implements JobService {
         try {
             getItemResponse = await this.ddbClient.send(new GetItemCommand(params))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -132,7 +161,8 @@ export class JobServiceImpl implements JobService {
             name: getItemResponse.Item.jobname.S,
             schedule: getItemResponse.Item.schedule.S,
             updated: new Date(getItemResponse.Item.updated.S),
-            state: getItemResponse.Item.jobstate.S as JobState
+            state: getItemResponse.Item.jobstate.S as JobState,
+            validationState: getItemResponse.Item.jobstatus.S as JobValidationState
         }
     }
 
@@ -145,7 +175,6 @@ export class JobServiceImpl implements JobService {
         try {
             getObjectResponse = await this.s3Client.send(new GetObjectCommand(params))
         } catch (error) {
-            console.error(error)
             throw error
         }
         let contents: string = ''
@@ -158,7 +187,6 @@ export class JobServiceImpl implements JobService {
             steps = JSON.parse(contents)
         } catch (error) {
             console.error('Error parsing job steps json')
-            console.error(error)
             throw error
         }
 
@@ -171,7 +199,6 @@ export class JobServiceImpl implements JobService {
         try {
             job = await this.getJobDetails(id)
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -183,7 +210,6 @@ export class JobServiceImpl implements JobService {
         try {
             targets = await this.ebClient.send(new ListTargetsByRuleCommand(listTargetsInput))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -201,7 +227,6 @@ export class JobServiceImpl implements JobService {
             await this.ebClient.send(new RemoveTargetsCommand(removeTargetsInput))
             await this.ebClient.send(new DeleteRuleCommand(deleteRuleInput))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -226,14 +251,12 @@ export class JobServiceImpl implements JobService {
         try {
             await this.s3Client.send(new DeleteObjectCommand(deleteObjectInput))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
         try {
             await this.ddbClient.send(new DeleteItemCommand(deleteItemInput))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -254,7 +277,6 @@ export class JobServiceImpl implements JobService {
         try {
             scanResponse = await this.ddbClient.send(new ScanCommand(params))
         } catch (error) {
-            console.error(error)
             throw error
         }
 
@@ -267,7 +289,8 @@ export class JobServiceImpl implements JobService {
             name: item.jobname.S,
             schedule: item.schedule.S,
             updated: new Date(item.updated.S),
-            state: item.jobstate.S as JobState
+            state: item.jobstate.S as JobState,
+            validationState: item.jobstatus.S as JobValidationState
         }))
 
         return { jobDetails, lastEvaluatedKey: scanResponse.LastEvaluatedKey }

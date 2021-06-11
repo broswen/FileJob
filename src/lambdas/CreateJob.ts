@@ -53,7 +53,8 @@ const createJob = async (event, context) => {
     schedule: event.body.schedule,
     updated: new Date(),
     state: event.body.state,
-    steps: event.body.steps
+    steps: event.body.steps,
+    validationState: 'VALIDATING'
   }
 
   try {

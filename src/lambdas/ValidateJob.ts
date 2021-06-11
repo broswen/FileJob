@@ -41,12 +41,15 @@ module.exports.handler = async (sqsEvent: SQSEvent) => {
 
         console.error("Invalid Job Schema")
         console.error(errorMessage)
+
+        await jobService.setJobValidationState(jobDetails.id, 'INVALID')
         // set dynamodb validation_status to "INVALID"
         // set dynamodg validation_error to errorMessage
 
       } else {
         console.log("Valid Job Schema")
         // set dynamodb validation_status to "VALID"
+        await jobService.setJobValidationState(jobDetails.id, 'VALID')
       }
     }
   }
