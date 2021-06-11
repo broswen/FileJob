@@ -31,6 +31,10 @@ module.exports.handler = async (event: { id: string }) => {
     throw error
   }
 
+  if (jobDetails.validationState !== 'VALID') {
+    throw new Error('Skipping job run. Job definition is not valid or has not been validated.')
+  }
+
   console.log(`Starting ${event.id} at ${new Date().toISOString()}`)
 
   return {

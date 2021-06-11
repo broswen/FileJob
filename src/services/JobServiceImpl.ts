@@ -27,13 +27,13 @@ export class JobServiceImpl implements JobService {
                     S: `J#${id}`
                 }
             },
-            ConditionExpression: 'SET #v = :v',
+            UpdateExpression: 'SET #v = :v',
             ExpressionAttributeNames: {
                 '#v': 'validationstate'
             },
             ExpressionAttributeValues: {
                 ':v': {
-                    'S': validationState
+                    S: validationState
                 }
             }
         }
@@ -162,7 +162,7 @@ export class JobServiceImpl implements JobService {
             schedule: getItemResponse.Item.schedule.S,
             updated: new Date(getItemResponse.Item.updated.S),
             state: getItemResponse.Item.jobstate.S as JobState,
-            validationState: getItemResponse.Item.jobstatus.S as JobValidationState
+            validationState: getItemResponse.Item.validationstate.S as JobValidationState
         }
     }
 
@@ -290,7 +290,7 @@ export class JobServiceImpl implements JobService {
             schedule: item.schedule.S,
             updated: new Date(item.updated.S),
             state: item.jobstate.S as JobState,
-            validationState: item.jobstatus.S as JobValidationState
+            validationState: item.validationstate.S as JobValidationState
         }))
 
         return { jobDetails, lastEvaluatedKey: scanResponse.LastEvaluatedKey }
