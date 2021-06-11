@@ -105,7 +105,7 @@ For example, the job definition below merges 2 files together, copies the result
 ### TODO
 - [x] generate EventBridge during job creation
 - [x] implement PUT update endpoint
-- [ ] Implement asynchronous job definition validation (block jobs from running if the definition is malformed)
+- [x] Implement asynchronous job definition validation (block jobs from running if the definition is malformed)
 - [ ] complete full pagination implementation
 - [x] secure API with api keys and usage plan throttling
 - [ ] typed errors
